@@ -32,5 +32,5 @@ jobs:
 
       - uses: actions/upload-artifact@v2
         with:
-          name: libreforge
-          path: bin
+          name: libreforge-${{ steps.vars.outputs.sha_short }}
+          path: libs
