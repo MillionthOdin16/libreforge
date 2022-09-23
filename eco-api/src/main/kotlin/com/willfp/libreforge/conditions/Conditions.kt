@@ -27,6 +27,7 @@ import com.willfp.libreforge.conditions.conditions.ConditionInMainhand
 import com.willfp.libreforge.conditions.conditions.ConditionInOffhand
 import com.willfp.libreforge.conditions.conditions.ConditionInWater
 import com.willfp.libreforge.conditions.conditions.ConditionInWorld
+import com.willfp.libreforge.conditions.conditions.ConditionIsExpressionTrue
 import com.willfp.libreforge.conditions.conditions.ConditionIsFrozen
 import com.willfp.libreforge.conditions.conditions.ConditionIsGliding
 import com.willfp.libreforge.conditions.conditions.ConditionIsNight
@@ -94,6 +95,7 @@ object Conditions {
     val WEARING_CHESTPLATE: Condition = ConditionWearingChestplate()
     val WEARING_HELMET: Condition = ConditionWearingHelmet()
     val HAS_ITEM: Condition = ConditionHasItem()
+    val IS_EXPRESSION_TRUE: Condition = ConditionIsExpressionTrue()
 
     /**
      * Get condition matching id.
@@ -123,6 +125,19 @@ object Conditions {
         BY_ID.remove(condition.id)
         BY_ID[condition.id] = condition
     }
+
+    /**
+     * Compile a group of conditions.
+     *
+     * @param configs The condition configs.
+     * @param context The context to log violations for.
+     * @return The compiled conditions.
+     */
+    @JvmStatic
+    fun compile(
+        configs: Iterable<Config>,
+        context: String
+    ): Set<ConfiguredCondition> = configs.mapNotNull { compile(it, context) }.toSet()
 
     /**
      * Compile a condition.

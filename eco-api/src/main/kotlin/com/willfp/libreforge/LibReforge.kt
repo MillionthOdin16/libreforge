@@ -23,15 +23,19 @@ import com.willfp.libreforge.integrations.ecoarmor.EcoArmorIntegration
 import com.willfp.libreforge.integrations.ecobosses.EcoBossesIntegration
 import com.willfp.libreforge.integrations.ecoenchants.EcoEnchantsIntegration
 import com.willfp.libreforge.integrations.ecoitems.EcoItemsIntegration
+import com.willfp.libreforge.integrations.ecojobs.EcoJobsIntegration
 import com.willfp.libreforge.integrations.ecopets.EcoPetsIntegration
 import com.willfp.libreforge.integrations.ecoskills.EcoSkillsIntegration
 import com.willfp.libreforge.integrations.jobs.JobsIntegration
+import com.willfp.libreforge.integrations.levelledmobs.LevelledMobsIntegration
 import com.willfp.libreforge.integrations.mcmmo.McMMOIntegration
 import com.willfp.libreforge.integrations.paper.PaperIntegration
 import com.willfp.libreforge.integrations.reforges.ReforgesIntegration
+import com.willfp.libreforge.integrations.scyther.ScytherIntegration
 import com.willfp.libreforge.integrations.talismans.TalismansIntegration
 import com.willfp.libreforge.integrations.tmmobcoins.TMMobcoinsIntegration
 import com.willfp.libreforge.integrations.vault.VaultIntegration
+import com.willfp.libreforge.triggers.InvocationPlaceholderListener
 import com.willfp.libreforge.triggers.Triggers
 import com.willfp.libreforge.triggers.triggers.TriggerStatic
 import org.apache.commons.lang.StringUtils
@@ -92,16 +96,7 @@ abstract class LibReforgePlugin : EcoPlugin() {
     fun copyConfigs(directory: String) {
         val folder = File(this.dataFolder, directory)
         if (!folder.exists()) {
-            val files = mutableListOf<String>()
-
-            for (entry in ZipFile(this.file).entries().asIterator()) {
-                if (entry.name.startsWith("$directory/")) {
-                    files.add(entry.name.removePrefix("$directory/"))
-                }
-            }
-
-            files.removeIf { !it.endsWith(".yml") }
-            files.replaceAll { it.replace(".yml", "") }
+            val files = getDefaultConfigNames(directory)
 
             for (configName in files) {
                 UsermadeConfig(configName, directory, this)
@@ -109,7 +104,27 @@ abstract class LibReforgePlugin : EcoPlugin() {
         }
     }
 
-    fun fetchConfigs(directory: String): Map<String, Config> {
+    @Suppress("MemberVisibilityCanBePrivate")
+    fun getDefaultConfigNames(directory: String): Collection<String> {
+        val files = mutableListOf<String>()
+
+        try {
+            for (entry in ZipFile(this.file).entries().asIterator()) {
+                if (entry.name.startsWith("$directory/")) {
+                    files.add(entry.name.removePrefix("$directory/"))
+                }
+            }
+        } catch (_: Exception) {
+            // Sometimes, ZipFile likes to completely fail. No idea why, but here's the 'solution'!
+        }
+
+        files.removeIf { !it.endsWith(".yml") }
+        files.replaceAll { it.replace(".yml", "") }
+
+        return files
+    }
+
+    private fun doFetchConfigs(directory: String): Map<String, Config> {
         val configs = mutableMapOf<String, Config>()
 
         for (file in File(this.dataFolder, directory).walk()) {
@@ -121,10 +136,43 @@ abstract class LibReforgePlugin : EcoPlugin() {
                 continue
             }
 
-            configs[file.nameWithoutExtension] = TransientConfig(file, ConfigType.YAML)
+            val id = file.nameWithoutExtension
+            val config = TransientConfig(file, ConfigType.YAML)
+            configs[id] = config
         }
 
         return configs
+    }
+
+    fun fetchConfigs(directory: String): Map<String, Config> {
+        // Share configs on fetch
+        if (this.configYml.getBool("share-configs")) {
+            try {
+                this.shareConfigs(directory)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        return doFetchConfigs(directory)
+    }
+
+    fun getUsermadeConfigs(directory: String): Map<String, Config> {
+        val all = doFetchConfigs(directory).toMutableMap()
+
+        for (name in getDefaultConfigNames(directory)) {
+            all.remove(name)
+        }
+
+        return all
+    }
+
+    fun getUsermadeConfigFiles(directory: String): Collection<File> {
+        val names = doFetchConfigs(directory).keys - getDefaultConfigNames(directory).toSet()
+
+        return File(this.dataFolder, directory).walk().filter {
+            it.nameWithoutExtension in names
+        }.toList()
     }
 
     fun registerHolderProvider(provider: HolderProvider) {
@@ -149,6 +197,7 @@ abstract class LibReforgePlugin : EcoPlugin() {
         this.eventManager.registerListener(MovementConditionListener())
         this.eventManager.registerListener(PointCostHandler())
         this.eventManager.registerListener(EffectCollisionFixer(this))
+        this.eventManager.registerListener(InvocationPlaceholderListener)
         for (condition in Conditions.values()) {
             this.eventManager.registerListener(condition)
         }
@@ -207,7 +256,10 @@ abstract class LibReforgePlugin : EcoPlugin() {
             IntegrationLoader("Reforges", ReforgesIntegration::load),
             IntegrationLoader("Boosters", BoostersIntegration::load),
             IntegrationLoader("EcoEnchants", EcoEnchantsIntegration::load),
-            IntegrationLoader("EcoPets", EcoPetsIntegration::load)
+            IntegrationLoader("EcoPets", EcoPetsIntegration::load),
+            IntegrationLoader("EcoJobs", EcoJobsIntegration::load),
+            IntegrationLoader("LevelledMobs") { LevelledMobsIntegration.load(this) },
+            IntegrationLoader("Scyther", ScytherIntegration::load),
         )
 
         integrations.addAll(loadAdditionalIntegrations())
@@ -226,7 +278,7 @@ abstract class LibReforgePlugin : EcoPlugin() {
     }
 
     override fun getMinimumEcoVersion(): String {
-        return "6.35.7"
+        return "6.41.0"
     }
 
     companion object {

@@ -2,17 +2,16 @@ package com.willfp.libreforge.triggers.mutators
 
 import com.willfp.eco.core.config.interfaces.Config
 import com.willfp.libreforge.ConfigViolation
+import com.willfp.libreforge.getDoubleFromExpression
 import com.willfp.libreforge.triggers.DataMutator
 import com.willfp.libreforge.triggers.TriggerData
 
 class MutatorTranslateLocation : DataMutator("translate_location") {
     override fun mutate(data: TriggerData, config: Config): TriggerData {
-        val player = data.player
-
         val location = data.location?.clone()?.apply {
-            this.x += config.getDoubleFromExpression("add_x", player)
-            this.y += config.getDoubleFromExpression("add_y", player)
-            this.z += config.getDoubleFromExpression("add_z", player)
+            this.x += config.getDoubleFromExpression("add_x", data)
+            this.y += config.getDoubleFromExpression("add_y", data)
+            this.z += config.getDoubleFromExpression("add_z", data)
         } ?: return data
 
         return data.copy(location = location)

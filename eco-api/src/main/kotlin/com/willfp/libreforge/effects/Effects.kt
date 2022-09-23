@@ -2,6 +2,7 @@ package com.willfp.libreforge.effects
 
 import com.google.common.collect.HashBiMap
 import com.google.common.collect.ImmutableList
+import com.willfp.eco.core.config.TransientConfig
 import com.willfp.eco.core.config.interfaces.Config
 import com.willfp.eco.core.placeholder.InjectablePlaceholder
 import com.willfp.eco.core.placeholder.StaticPlaceholder
@@ -10,6 +11,8 @@ import com.willfp.libreforge.LibReforgePlugin
 import com.willfp.libreforge.chains.EffectChains
 import com.willfp.libreforge.conditions.Conditions
 import com.willfp.libreforge.effects.effects.EffectAddHolder
+import com.willfp.libreforge.effects.effects.EffectAddHolderInRadius
+import com.willfp.libreforge.effects.effects.EffectAddPermanentHolderInRadius
 import com.willfp.libreforge.effects.effects.EffectAddPoints
 import com.willfp.libreforge.effects.effects.EffectArmor
 import com.willfp.libreforge.effects.effects.EffectArmorToughness
@@ -20,6 +23,7 @@ import com.willfp.libreforge.effects.effects.EffectBleed
 import com.willfp.libreforge.effects.effects.EffectBlockCommands
 import com.willfp.libreforge.effects.effects.EffectBonusHealth
 import com.willfp.libreforge.effects.effects.EffectBreakBlock
+import com.willfp.libreforge.effects.effects.EffectBroadcast
 import com.willfp.libreforge.effects.effects.EffectCancelEvent
 import com.willfp.libreforge.effects.effects.EffectConsumeHeldItem
 import com.willfp.libreforge.effects.effects.EffectCreateExplosion
@@ -39,6 +43,7 @@ import com.willfp.libreforge.effects.effects.EffectGiveMoney
 import com.willfp.libreforge.effects.effects.EffectGiveOxygen
 import com.willfp.libreforge.effects.effects.EffectGivePoints
 import com.willfp.libreforge.effects.effects.EffectGiveXp
+import com.willfp.libreforge.effects.effects.EffectGlowNearbyBlocks
 import com.willfp.libreforge.effects.effects.EffectHungerMultiplier
 import com.willfp.libreforge.effects.effects.EffectIgnite
 import com.willfp.libreforge.effects.effects.EffectKeepInventory
@@ -47,6 +52,7 @@ import com.willfp.libreforge.effects.effects.EffectKnockbackResistanceMultiplier
 import com.willfp.libreforge.effects.effects.EffectLuckMultiplier
 import com.willfp.libreforge.effects.effects.EffectMineRadius
 import com.willfp.libreforge.effects.effects.EffectMineRadiusOneDeep
+import com.willfp.libreforge.effects.effects.EffectMineVein
 import com.willfp.libreforge.effects.effects.EffectMovementSpeedMultiplier
 import com.willfp.libreforge.effects.effects.EffectMultiplyDrops
 import com.willfp.libreforge.effects.effects.EffectMultiplyPoints
@@ -65,9 +71,11 @@ import com.willfp.libreforge.effects.effects.EffectRunChain
 import com.willfp.libreforge.effects.effects.EffectRunChainInline
 import com.willfp.libreforge.effects.effects.EffectRunCommand
 import com.willfp.libreforge.effects.effects.EffectRunPlayerCommand
+import com.willfp.libreforge.effects.effects.EffectSellItems
 import com.willfp.libreforge.effects.effects.EffectSellMultiplier
 import com.willfp.libreforge.effects.effects.EffectSendMessage
 import com.willfp.libreforge.effects.effects.EffectSendTitle
+import com.willfp.libreforge.effects.effects.EffectSetBlock
 import com.willfp.libreforge.effects.effects.EffectSetFreezeTicks
 import com.willfp.libreforge.effects.effects.EffectSetPoints
 import com.willfp.libreforge.effects.effects.EffectSetVelocity
@@ -86,14 +94,12 @@ import com.willfp.libreforge.effects.effects.EffectTraceback
 import com.willfp.libreforge.effects.effects.EffectTransmission
 import com.willfp.libreforge.effects.effects.EffectTriggerCustom
 import com.willfp.libreforge.effects.effects.EffectXpMultiplier
-import com.willfp.libreforge.filters.ConfiguredFilter
-import com.willfp.libreforge.filters.EmptyFilter
 import com.willfp.libreforge.separatorAmbivalent
 import com.willfp.libreforge.triggers.DataMutators
 import com.willfp.libreforge.triggers.Trigger
 import com.willfp.libreforge.triggers.Triggers
 import com.willfp.libreforge.triggers.triggers.TriggerStatic
-import java.util.*
+import java.util.UUID
 
 @Suppress("UNUSED")
 object Effects {
@@ -176,6 +182,13 @@ object Effects {
     val KNOCKBACK_RESISTANCE_MULTIPLIER: Effect = EffectKnockbackResistanceMultiplier()
     val SMITE: Effect = EffectSmite()
     val SHUFFLE_HOTBAR: Effect = EffectShuffleHotbar()
+    val BROADCAST: Effect = EffectBroadcast()
+    val GLOW_NEARBY_BLOCKS: Effect = EffectGlowNearbyBlocks()
+    val MINE_VEIN: Effect = EffectMineVein()
+    val SET_BLOCK: Effect = EffectSetBlock()
+    val SELL_ITEMS: Effect = EffectSellItems()
+    val ADD_HOLDER_IN_RADIUS: Effect = EffectAddHolderInRadius()
+    val ADD_PERMANENT_HOLDER_IN_RADIUS: Effect = EffectAddPermanentHolderInRadius()
 
     /**
      * Get effect matching id.
@@ -205,6 +218,19 @@ object Effects {
         BY_ID.remove(effect.id)
         BY_ID[effect.id] = effect
     }
+
+    /**
+     * Compile a group of effects.
+     *
+     * @param configs The effect configs.
+     * @param context The context to log violations for.
+     * @return The compiled effects.
+     */
+    @JvmStatic
+    fun compile(
+        configs: Iterable<Config>,
+        context: String
+    ): Set<ConfiguredEffect> = configs.mapNotNull { compile(it, context) }.inRunOrder()
 
     /**
      * Compile an effect.
@@ -271,8 +297,8 @@ object Effects {
                 return@let null
             }
 
-            if (it == null) EmptyFilter() else ConfiguredFilter(it)
-        } ?: EmptyFilter()
+            it
+        } ?: TransientConfig()
 
         val triggers = config.getStrings("triggers").let {
             val triggers = mutableListOf<Trigger>()

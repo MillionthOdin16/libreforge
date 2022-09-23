@@ -3,7 +3,6 @@ package com.willfp.libreforge.triggers.triggers
 import com.willfp.eco.core.drops.DropQueue
 import com.willfp.eco.core.integrations.antigrief.AntigriefManager
 import com.willfp.eco.core.integrations.mcmmo.McmmoManager
-import com.willfp.eco.util.BlockUtils
 import com.willfp.libreforge.triggers.Trigger
 import com.willfp.libreforge.triggers.TriggerData
 import com.willfp.libreforge.triggers.TriggerParameter
@@ -13,7 +12,6 @@ import org.bukkit.block.Container
 import org.bukkit.event.EventHandler
 import org.bukkit.event.block.BlockDropItemEvent
 
-
 class TriggerBlockItemDrop : Trigger(
     "block_item_drop", listOf(
         TriggerParameter.PLAYER,
@@ -22,7 +20,9 @@ class TriggerBlockItemDrop : Trigger(
         TriggerParameter.LOCATION
     )
 ) {
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler(
+        ignoreCancelled = true
+    )
     fun handle(event: BlockDropItemEvent) {
         if (McmmoManager.isFake(event)) {
             return
@@ -39,18 +39,8 @@ class TriggerBlockItemDrop : Trigger(
             return
         }
 
-        if (event.isCancelled) {
-            return
-        }
-
         if (!AntigriefManager.canBreakBlock(player, block)) {
             return
-        }
-
-        if (plugin.configYml.getBool("block-item-drop-place-check")) {
-            if (BlockUtils.isPlayerPlaced(block)) {
-                return
-            }
         }
 
         val originalDrops = event.items.map { it.itemStack }
@@ -63,7 +53,8 @@ class TriggerBlockItemDrop : Trigger(
                 block = block,
                 location = block.location,
                 event = wrapped
-            )
+            ),
+            originalDrops.sumOf { it.amount }.toDouble()
         )
 
         val newDrops = originalDrops.map(wrapped.modifier)

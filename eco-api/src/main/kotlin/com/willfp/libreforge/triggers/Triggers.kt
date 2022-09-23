@@ -5,11 +5,14 @@ import com.willfp.libreforge.triggers.triggers.TriggerAltClick
 import com.willfp.libreforge.triggers.triggers.TriggerBite
 import com.willfp.libreforge.triggers.triggers.TriggerBlockItemDrop
 import com.willfp.libreforge.triggers.triggers.TriggerBowAttack
+import com.willfp.libreforge.triggers.triggers.TriggerBreed
 import com.willfp.libreforge.triggers.triggers.TriggerBrew
 import com.willfp.libreforge.triggers.triggers.TriggerCastRod
 import com.willfp.libreforge.triggers.triggers.TriggerCatchEntity
 import com.willfp.libreforge.triggers.triggers.TriggerCatchFish
 import com.willfp.libreforge.triggers.triggers.TriggerCatchFishFail
+import com.willfp.libreforge.triggers.triggers.TriggerChangeArmor
+import com.willfp.libreforge.triggers.triggers.TriggerChangeWorld
 import com.willfp.libreforge.triggers.triggers.TriggerConsume
 import com.willfp.libreforge.triggers.triggers.TriggerCraft
 import com.willfp.libreforge.triggers.triggers.TriggerCustom
@@ -21,21 +24,29 @@ import com.willfp.libreforge.triggers.triggers.TriggerEntityItemDrop
 import com.willfp.libreforge.triggers.triggers.TriggerFallDamage
 import com.willfp.libreforge.triggers.triggers.TriggerGainHunger
 import com.willfp.libreforge.triggers.triggers.TriggerGainXp
+import com.willfp.libreforge.triggers.triggers.TriggerHeadshot
 import com.willfp.libreforge.triggers.triggers.TriggerHeal
+import com.willfp.libreforge.triggers.triggers.TriggerHoldItem
 import com.willfp.libreforge.triggers.triggers.TriggerHookInGround
 import com.willfp.libreforge.triggers.triggers.TriggerItemBreak
+import com.willfp.libreforge.triggers.triggers.TriggerJoin
 import com.willfp.libreforge.triggers.triggers.TriggerJump
 import com.willfp.libreforge.triggers.triggers.TriggerKill
+import com.willfp.libreforge.triggers.triggers.TriggerLeave
+import com.willfp.libreforge.triggers.triggers.TriggerLevelUpXp
 import com.willfp.libreforge.triggers.triggers.TriggerLoseHunger
 import com.willfp.libreforge.triggers.triggers.TriggerLosePotionEffect
 import com.willfp.libreforge.triggers.triggers.TriggerMeleeAttack
 import com.willfp.libreforge.triggers.triggers.TriggerMineBlock
 import com.willfp.libreforge.triggers.triggers.TriggerMineBlockProgress
 import com.willfp.libreforge.triggers.triggers.TriggerMove
+import com.willfp.libreforge.triggers.triggers.TriggerPlaceBlock
 import com.willfp.libreforge.triggers.triggers.TriggerPotionEffect
 import com.willfp.libreforge.triggers.triggers.TriggerProjectileHit
 import com.willfp.libreforge.triggers.triggers.TriggerProjectileLaunch
 import com.willfp.libreforge.triggers.triggers.TriggerReelIn
+import com.willfp.libreforge.triggers.triggers.TriggerRespawn
+import com.willfp.libreforge.triggers.triggers.TriggerSendMessage
 import com.willfp.libreforge.triggers.triggers.TriggerShieldBlock
 import com.willfp.libreforge.triggers.triggers.TriggerShootBow
 import com.willfp.libreforge.triggers.triggers.TriggerSmelt
@@ -100,6 +111,17 @@ object Triggers {
     val WIN_RAID: Trigger = TriggerWinRaid()
     val SMELT: Trigger = TriggerSmelt()
     val BREW: Trigger = TriggerBrew()
+    val PLACE_BLOCK: Trigger = TriggerPlaceBlock()
+    val BREED: Trigger = TriggerBreed()
+    val HEADSHOT: Trigger = TriggerHeadshot()
+    val JOIN: Trigger = TriggerJoin()
+    val LEAVE: Trigger = TriggerLeave()
+    val LEVEL_UP_XP: Trigger = TriggerLevelUpXp()
+    val CHANGE_WORLD: Trigger = TriggerChangeWorld()
+    val RESPAWN: Trigger = TriggerRespawn()
+    val HOLD_ITEM: Trigger = TriggerHoldItem()
+    val SEND_MESSAGE: Trigger = TriggerSendMessage()
+    val CHANGE_ARMOR: Trigger = TriggerChangeArmor()
 
     fun values(): Set<Trigger> {
         return BY_ID.values.toSet()

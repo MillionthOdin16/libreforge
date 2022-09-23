@@ -14,7 +14,7 @@ import com.willfp.libreforge.triggers.InvocationData
 import com.willfp.libreforge.triggers.Trigger
 import com.willfp.libreforge.triggers.mutate
 import org.bukkit.entity.Player
-import java.util.*
+import java.util.UUID
 import kotlin.math.max
 
 private val everyHandler = mutableMapOf<UUID, Int>()
@@ -22,7 +22,7 @@ private val everyHandler = mutableMapOf<UUID, Int>()
 data class ConfiguredEffect internal constructor(
     val effect: Effect,
     val args: Config,
-    val filter: Filter,
+    val filter: Config,
     val triggers: Collection<Trigger>,
     val uuid: UUID,
     val conditions: Collection<ConfiguredCondition>,
@@ -36,7 +36,9 @@ data class ConfiguredEffect internal constructor(
     fun enableFor(player: Player) {
         val offset = (effectStack[player.uniqueId] ?: 0) + 1
         effectStack[player.uniqueId] = offset
-        effect.handleEnable(player, args, generator.makeIdentifiers(offset))
+        val identifiers = generator.makeIdentifiers(offset)
+        effect.handleEnable(player, args, identifiers)
+        effect.handleEnable(player, args, identifiers, compileData)
     }
 
     fun disableFor(player: Player) {
@@ -58,15 +60,12 @@ data class ConfiguredEffect internal constructor(
 
         var invocation = rawInvocation.copy(compileData = compileData)
 
-        val allArguments = namedArguments +
-                NamedArgument(
-                    listOf("trigger_value", "triggervalue", "trigger", "value", "tv", "v", "t"),
-                    rawInvocation.value.toString()
-                )
+        val allArguments = namedArguments + rawInvocation.createPlaceholders()
 
         args.addInjectablePlaceholder(allArguments.flatMap { it.placeholders })
         mutators.forEach { it.config.addInjectablePlaceholder(allArguments.flatMap { a -> a.placeholders }) }
         conditions.forEach { it.config.addInjectablePlaceholder(allArguments.flatMap { a -> a.placeholders }) }
+        filter.addInjectablePlaceholder(allArguments.flatMap { a -> a.placeholders })
 
         if (args.getBool("self_as_victim")) {
             invocation = invocation.copy(
@@ -106,11 +105,11 @@ data class ConfiguredEffect internal constructor(
         }
 
         if (args.getBool("filters_before_mutation")) {
-            if (!filter.matches(rawInvocation.data)) {
+            if (!Filter.matches(rawInvocation.data, filter)) {
                 return
             }
         } else {
-            if (!filter.matches(data)) {
+            if (!Filter.matches(data, filter)) {
                 return
             }
         }
@@ -253,3 +252,9 @@ internal data class RepeatData(
         if (times < 1) times = 1
     }
 }
+
+private class EffectSet(effects: Collection<ConfiguredEffect>) : HashSet<ConfiguredEffect>(effects)
+
+fun Iterable<ConfiguredEffect>.inRunOrder(): Set<ConfiguredEffect> =
+    if (this is EffectSet) this else EffectSet(this.filter { !it.effect.runsLast } +
+            this.filter { it.effect.runsLast })
