@@ -23,6 +23,9 @@ class EffectConsumeHeldItem : Effect(
 
         val item = player.inventory.itemInMainHand
 
+        //Setup the item consume event so that other plugins can react to this
+        val event = org.bukkit.event.player.PlayerItemConsumeEvent(player, item)
+
         val newAmount = item.amount - amount
         if (newAmount <= 0) {
             item.type = Material.AIR
@@ -31,6 +34,9 @@ class EffectConsumeHeldItem : Effect(
         }
 
         player.inventory.setItemInMainHand(item)
+
+        //Trigger the item consume event so that other plugins can react to this
+        org.bukkit.Bukkit.getPluginManager().callEvent(event)
 
         player.updateEffects()
     }
