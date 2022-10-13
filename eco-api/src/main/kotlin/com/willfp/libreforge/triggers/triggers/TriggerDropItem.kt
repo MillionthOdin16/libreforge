@@ -1,38 +1,34 @@
 package com.willfp.libreforge.triggers.triggers
 
 import com.willfp.eco.core.integrations.mcmmo.McmmoManager
-import com.willfp.libreforge.triggers.GenericCancellableEvent
 import com.willfp.libreforge.triggers.Trigger
 import com.willfp.libreforge.triggers.TriggerData
 import com.willfp.libreforge.triggers.TriggerParameter
-import org.bukkit.entity.LivingEntity
+import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
-import org.bukkit.event.entity.PlayerLeashEntityEvent
+import org.bukkit.event.entity.EntityDropItemEvent
 
-class TriggerLeashEntity : Trigger(
-    "leash_entity", listOf(
+class TriggerDropItem : Trigger(
+    "drop_item", listOf(
         TriggerParameter.PLAYER,
-        TriggerParameter.LOCATION,
-        TriggerParameter.VICTIM,
-        TriggerParameter.EVENT
+        TriggerParameter.ITEM
     )
 ) {
     @EventHandler(ignoreCancelled = true)
-    fun handle(event: PlayerLeashEntityEvent) {
+    fun handle(event: EntityDropItemEvent) {
         if (McmmoManager.isFake(event)) {
             return
         }
 
-        val player = event.player
+        val player = event.entity as? Player ?: return
 
         this.processTrigger(
             player,
             TriggerData(
                 player = player,
-                location = event.entity.location,
-                victim = event.entity as? LivingEntity,
-                event = GenericCancellableEvent(event)
-            )
+                item = event.itemDrop.itemStack
+            ),
+            value = event.itemDrop.itemStack.amount.toDouble()
         )
     }
 }
