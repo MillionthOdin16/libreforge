@@ -16,9 +16,12 @@ class ConditionAnyOf : Condition("any_of") {
     }
 
     override fun makeCompileData(config: Config, context: String): CompileData {
-        return AnyOfCompileData(config.getSubsections("conditions").mapNotNull {
-            Conditions.compile(it, "$context -> any_of Conditions)")
-        })
+        return AnyOfCompileData(
+            Conditions.compile(
+                config.getSubsections("conditions"),
+                "$context -> any_of Conditions)"
+            )
+        )
     }
 
     override fun validateConfig(config: Config): List<ConfigViolation> {
@@ -35,16 +38,8 @@ class ConditionAnyOf : Condition("any_of") {
     }
 
     private class AnyOfCompileData(
-        override val data: Iterable<ConfiguredCondition>
+        private val conditions: Set<ConfiguredCondition>
     ) : CompileData {
-        fun isMet(player: Player): Boolean {
-            val list = data.toList()
-
-            if (list.isEmpty()) {
-                return true
-            }
-
-            return list.any { it.isMet(player) }
-        }
+        fun isMet(player: Player) = conditions.any { it.isMet(player) }
     }
 }

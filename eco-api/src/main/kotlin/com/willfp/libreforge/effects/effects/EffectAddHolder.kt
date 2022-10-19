@@ -13,7 +13,7 @@ import com.willfp.libreforge.getIntFromExpression
 import com.willfp.libreforge.triggers.InvocationData
 import com.willfp.libreforge.triggers.TriggerParameter
 import com.willfp.libreforge.triggers.Triggers
-import java.util.*
+import java.util.UUID
 
 class EffectAddHolder : Effect(
     "add_holder",
@@ -32,8 +32,7 @@ class EffectAddHolder : Effect(
 
     override fun handle(invocation: InvocationData, config: Config) {
         val player = invocation.data.player ?: return
-        val data = invocation.compileData as? HolderCompileData ?: return
-        val unfinished = data.data
+        val unfinished = invocation.compileData as? UnfinishedHolder ?: return
 
         val uuid = UUID.randomUUID()
 
@@ -84,30 +83,26 @@ class EffectAddHolder : Effect(
     }
 
     override fun makeCompileData(config: Config, context: String): CompileData {
-        val effects = config.getSubsections("effects").mapNotNull {
-            Effects.compile(it, "$context -> add_holder Effects")
-        }.toSet()
+        val effects = Effects.compile(
+            config.getSubsections("effects"),
+            "$context -> add_holder Effects"
+        )
 
-        val conditions = config.getSubsections("conditions").mapNotNull {
-            Conditions.compile(it, "$context -> add_holder Conditions")
-        }.toSet()
+        val conditions = Conditions.compile(
+            config.getSubsections("conditions"),
+            "$context -> add_holder Conditions"
+        )
 
-        return HolderCompileData(
-            HolderCompileData.UnfinishedHolder(
-                effects,
-                conditions
-            )
+        return UnfinishedHolder(
+            effects,
+            conditions
         )
     }
 
-    private class HolderCompileData(
-        override val data: UnfinishedHolder
-    ) : CompileData {
-        data class UnfinishedHolder(
-            val effects: Set<ConfiguredEffect>,
-            val conditions: Set<ConfiguredCondition>
-        )
-    }
+    private data class UnfinishedHolder(
+        val effects: Set<ConfiguredEffect>,
+        val conditions: Set<ConfiguredCondition>
+    ) : CompileData
 
     private class AddedHolder(
         override val effects: Set<ConfiguredEffect>,

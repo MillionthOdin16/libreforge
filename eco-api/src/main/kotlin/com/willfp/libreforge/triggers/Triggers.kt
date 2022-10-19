@@ -19,6 +19,7 @@ import com.willfp.libreforge.triggers.triggers.TriggerCustom
 import com.willfp.libreforge.triggers.triggers.TriggerDamageItem
 import com.willfp.libreforge.triggers.triggers.TriggerDeath
 import com.willfp.libreforge.triggers.triggers.TriggerDeployElytra
+import com.willfp.libreforge.triggers.triggers.TriggerDropItem
 import com.willfp.libreforge.triggers.triggers.TriggerEnchantItem
 import com.willfp.libreforge.triggers.triggers.TriggerEntityItemDrop
 import com.willfp.libreforge.triggers.triggers.TriggerFallDamage
@@ -28,7 +29,6 @@ import com.willfp.libreforge.triggers.triggers.TriggerHeadshot
 import com.willfp.libreforge.triggers.triggers.TriggerHeal
 import com.willfp.libreforge.triggers.triggers.TriggerHoldItem
 import com.willfp.libreforge.triggers.triggers.TriggerHookInGround
-import com.willfp.libreforge.triggers.triggers.TriggerDropItem
 import com.willfp.libreforge.triggers.triggers.TriggerItemBreak
 import com.willfp.libreforge.triggers.triggers.TriggerJoin
 import com.willfp.libreforge.triggers.triggers.TriggerJump
@@ -134,22 +134,12 @@ object Triggers {
         return BY_ID.values.toSet()
     }
 
-    fun all(): () -> Set<Trigger> {
-        return { values() }
+    fun all(): (Trigger) -> Boolean {
+        return { true }
     }
 
-    fun withParameters(vararg parameters: TriggerParameter): () -> Set<Trigger> {
-        return {
-            val found = mutableSetOf<Trigger>()
-
-            for (trigger in values()) {
-                if (trigger.parameters.containsAll(parameters.toSet())) {
-                    found.add(trigger)
-                }
-            }
-
-            found
-        }
+    fun withParameters(vararg parameters: TriggerParameter): (Trigger) -> Boolean {
+        return { it.parameters.containsAll(parameters.toSet()) }
     }
 
     fun getById(id: String): Trigger? {

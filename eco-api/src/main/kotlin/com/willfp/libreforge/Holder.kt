@@ -4,12 +4,17 @@ import com.github.benmanes.caffeine.cache.Caffeine
 import com.willfp.libreforge.conditions.ConfiguredCondition
 import com.willfp.libreforge.effects.ConfiguredEffect
 import org.bukkit.entity.Player
-import java.io.StringReader
 import java.util.concurrent.TimeUnit
 
 private val lineCache = Caffeine.newBuilder()
     .expireAfterWrite(1, TimeUnit.SECONDS)
     .build<Int, List<String>>()
+
+internal object BlankHolder : Holder {
+    override val id = "internal:blank"
+    override val conditions = emptySet<ConfiguredCondition>()
+    override val effects = emptySet<ConfiguredEffect>()
+}
 
 interface Holder {
     val id: String

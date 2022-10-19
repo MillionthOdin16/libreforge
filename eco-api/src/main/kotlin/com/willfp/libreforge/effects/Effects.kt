@@ -1,7 +1,6 @@
 package com.willfp.libreforge.effects
 
 import com.google.common.collect.HashBiMap
-import com.google.common.collect.ImmutableList
 import com.willfp.eco.core.config.TransientConfig
 import com.willfp.eco.core.config.interfaces.Config
 import com.willfp.eco.core.placeholder.InjectablePlaceholder
@@ -10,6 +9,13 @@ import com.willfp.libreforge.ConfigViolation
 import com.willfp.libreforge.LibReforgePlugin
 import com.willfp.libreforge.chains.EffectChains
 import com.willfp.libreforge.conditions.Conditions
+import com.willfp.libreforge.effects.arguments.EffectArgumentChance
+import com.willfp.libreforge.effects.arguments.EffectArgumentCooldown
+import com.willfp.libreforge.effects.arguments.EffectArgumentCost
+import com.willfp.libreforge.effects.arguments.EffectArgumentEvery
+import com.willfp.libreforge.effects.arguments.EffectArgumentPointCost
+import com.willfp.libreforge.effects.arguments.EffectArgumentRequire
+import com.willfp.libreforge.effects.effects.EffectAOE
 import com.willfp.libreforge.effects.effects.EffectAddDamage
 import com.willfp.libreforge.effects.effects.EffectAddHolder
 import com.willfp.libreforge.effects.effects.EffectAddHolderInRadius
@@ -106,12 +112,12 @@ import com.willfp.libreforge.separatorAmbivalent
 import com.willfp.libreforge.triggers.DataMutators
 import com.willfp.libreforge.triggers.Trigger
 import com.willfp.libreforge.triggers.Triggers
-import com.willfp.libreforge.triggers.triggers.TriggerStatic
 import java.util.UUID
 
 @Suppress("UNUSED")
 object Effects {
     private val BY_ID = HashBiMap.create<String, Effect>()
+    private val EFFECT_ARGUMENTS = mutableSetOf<EffectArgument>()
 
     val DAMAGE_MULTIPLIER: Effect = EffectDamageMultiplier()
     val CRIT_MULTIPLIER: Effect = EffectCritMultiplier()
@@ -205,6 +211,16 @@ object Effects {
     val TELEPORT_TO_GROUND: Effect = EffectTeleportToGround()
     val DROP_ITEM: Effect = EffectDropItem()
     val DROP_ITEM_FOR_PLAYER: Effect = EffectDropItemForPlayer()
+    val AOE: Effect = EffectAOE()
+
+    init {
+        addNewEffectArgument(EffectArgumentChance)
+        addNewEffectArgument(EffectArgumentCooldown)
+        addNewEffectArgument(EffectArgumentCost)
+        addNewEffectArgument(EffectArgumentEvery)
+        addNewEffectArgument(EffectArgumentPointCost)
+        addNewEffectArgument(EffectArgumentRequire)
+    }
 
     /**
      * Get effect matching id.
@@ -222,7 +238,7 @@ object Effects {
      * @return The effects.
      */
     fun values(): List<Effect> {
-        return ImmutableList.copyOf(BY_ID.values)
+        return BY_ID.values.toList()
     }
 
     /**
@@ -236,23 +252,47 @@ object Effects {
     }
 
     /**
+     * Add new effect argument.
+     *
+     * @param argument The argument.
+     */
+    fun addNewEffectArgument(argument: EffectArgument) {
+        EFFECT_ARGUMENTS += argument
+    }
+
+    /**
+     * List of all effect arguments.
+     *
+     * @return The arguments.
+     */
+    fun effectArguments(): List<EffectArgument> {
+        return EFFECT_ARGUMENTS.toList()
+    }
+
+    /**
      * Compile a group of effects.
      *
      * @param configs The effect configs.
      * @param context The context to log violations for.
+     * @param chainLike If effects should allow all triggers and prevent
+     *     permanent effects.
      * @return The compiled effects.
      */
     @JvmStatic
+    @JvmOverloads
     fun compile(
         configs: Iterable<Config>,
-        context: String
-    ): Set<ConfiguredEffect> = configs.mapNotNull { compile(it, context) }.inRunOrder()
+        context: String,
+        chainLike: Boolean = false
+    ): Set<ConfiguredEffect> = configs.mapNotNull { compile(it, context, chainLike = chainLike) }.inRunOrder()
 
     /**
      * Compile an effect.
      *
      * @param cfg The config for the effect.
      * @param context The context to log violations for.
+     * @param chainLike If effects should allow all triggers and prevent
+     *     permanent effects.
      * @return The configured effect, or null if invalid.
      */
     @JvmStatic
@@ -303,7 +343,7 @@ object Effects {
         }
 
         val filter = config.getSubsectionOrNull("filters").let {
-            if (!effect.supportsFilters && it != null) {
+            if (effect.isPermanent && it != null) {
                 LibReforgePlugin.instance.logViolation(
                     effect.id,
                     context,
@@ -319,7 +359,7 @@ object Effects {
         val triggers = config.getStrings("triggers").let {
             val triggers = mutableListOf<Trigger>()
 
-            if (it.isNotEmpty() && effect.applicableTriggers.isEmpty()) {
+            if (it.isNotEmpty() && effect.isPermanent) {
                 LibReforgePlugin.instance.logViolation(
                     effect.id,
                     context,
@@ -332,7 +372,7 @@ object Effects {
             }
 
             if (chainLike) {
-                if (effect.applicableTriggers.isEmpty()) {
+                if (effect.isPermanent) {
                     LibReforgePlugin.instance.logViolation(
                         effect.id,
                         context,
@@ -346,7 +386,7 @@ object Effects {
             }
 
             if (!chainLike) {
-                if (effect.applicableTriggers.isNotEmpty() && it.isEmpty()) {
+                if (!effect.isPermanent && it.isEmpty()) {
                     LibReforgePlugin.instance.logViolation(
                         effect.id,
                         context,
@@ -374,7 +414,7 @@ object Effects {
                     return@let null
                 }
 
-                if (!effect.applicableTriggers.contains(trigger) && trigger !is TriggerStatic) {
+                if (!effect.supportsTrigger(trigger)) {
                     LibReforgePlugin.instance.logViolation(
                         effect.id,
                         context,
@@ -390,9 +430,10 @@ object Effects {
             triggers
         } ?: return null
 
-        val conditions = config.getSubsections("conditions").mapNotNull {
-            Conditions.compile(it, "$context -> Effect-Specific Conditions")
-        }
+        val conditions = Conditions.compile(
+            config.getSubsections("conditions"),
+            "$context -> Effect-Specific Conditions"
+        )
 
         val mutators = config.getSubsections("mutators").mapNotNull {
             DataMutators.compile(it, "$context -> Mutators")

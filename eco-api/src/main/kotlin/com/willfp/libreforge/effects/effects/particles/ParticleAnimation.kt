@@ -4,7 +4,7 @@ import com.willfp.eco.core.config.interfaces.Config
 import com.willfp.libreforge.ConfigurableProperty
 import org.bukkit.entity.Player
 import org.joml.Vector3f
-import java.util.*
+import java.util.Objects
 
 abstract class ParticleAnimation(
     id: String
@@ -14,7 +14,7 @@ abstract class ParticleAnimation(
     }
 
     private fun register() {
-        ParticleAnimations.addNewCondition(this)
+        ParticleAnimations.addNewAnimation(this)
     }
 
     abstract fun getParticleLocations(

@@ -52,8 +52,7 @@ class EffectAddPermanentHolderInRadius : Effect("add_permanent_holder_in_radius"
     }
 
     override fun handleEnable(player: Player, config: Config, identifiers: Identifiers, compileData: CompileData?) {
-        val data = compileData as? HolderCompileData ?: return
-        val unfinished = data.data
+        val unfinished = compileData as? UnfinishedHolder ?: return
 
         val uuid = identifiers.uuid
 
@@ -81,19 +80,19 @@ class EffectAddPermanentHolderInRadius : Effect("add_permanent_holder_in_radius"
     }
 
     override fun makeCompileData(config: Config, context: String): CompileData {
-        val effects = config.getSubsections("effects").mapNotNull {
-            Effects.compile(it, "$context -> add_permanent_holder_in_radius Effects")
-        }.toSet()
+        val effects = Effects.compile(
+            config.getSubsections("effects"),
+            "$context -> add_permanent_holder_in_radius Effects"
+        )
 
-        val conditions = config.getSubsections("conditions").mapNotNull {
-            Conditions.compile(it, "$context -> add_permanent_holder_in_radius Conditions")
-        }.toSet()
+        val conditions = Conditions.compile(
+            config.getSubsections("conditions"),
+            "$context -> add_permanent_holder_in_radius Conditions"
+        )
 
-        return HolderCompileData(
-            HolderCompileData.UnfinishedHolder(
-                effects,
-                conditions
-            )
+        return UnfinishedHolder(
+            effects,
+            conditions
         )
     }
 
@@ -124,14 +123,10 @@ class EffectAddPermanentHolderInRadius : Effect("add_permanent_holder_in_radius"
         return violations
     }
 
-    private class HolderCompileData(
-        override val data: UnfinishedHolder
-    ) : CompileData {
-        data class UnfinishedHolder(
-            val effects: Set<ConfiguredEffect>,
-            val conditions: Set<ConfiguredCondition>
-        )
-    }
+    private data class UnfinishedHolder(
+        val effects: Set<ConfiguredEffect>,
+        val conditions: Set<ConfiguredCondition>
+    ) : CompileData
 
     private class AddedHolder(
         override val effects: Set<ConfiguredEffect>,
