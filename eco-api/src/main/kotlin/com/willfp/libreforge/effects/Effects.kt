@@ -1,7 +1,7 @@
 package com.willfp.libreforge.effects
 
 import com.google.common.collect.HashBiMap
-import com.willfp.eco.core.config.TransientConfig
+import com.willfp.eco.core.config.emptyConfig
 import com.willfp.eco.core.config.interfaces.Config
 import com.willfp.eco.core.placeholder.InjectablePlaceholder
 import com.willfp.eco.core.placeholder.StaticPlaceholder
@@ -14,6 +14,7 @@ import com.willfp.libreforge.effects.arguments.EffectArgumentCooldown
 import com.willfp.libreforge.effects.arguments.EffectArgumentCost
 import com.willfp.libreforge.effects.arguments.EffectArgumentEvery
 import com.willfp.libreforge.effects.arguments.EffectArgumentPointCost
+import com.willfp.libreforge.effects.arguments.EffectArgumentPrice
 import com.willfp.libreforge.effects.arguments.EffectArgumentRequire
 import com.willfp.libreforge.effects.effects.EffectAOE
 import com.willfp.libreforge.effects.effects.EffectAddDamage
@@ -90,6 +91,7 @@ import com.willfp.libreforge.effects.effects.EffectSetBlock
 import com.willfp.libreforge.effects.effects.EffectSetFreezeTicks
 import com.willfp.libreforge.effects.effects.EffectSetPoints
 import com.willfp.libreforge.effects.effects.EffectSetVelocity
+import com.willfp.libreforge.effects.effects.EffectSetVictimVelocity
 import com.willfp.libreforge.effects.effects.EffectShoot
 import com.willfp.libreforge.effects.effects.EffectShootArrow
 import com.willfp.libreforge.effects.effects.EffectShuffleHotbar
@@ -212,6 +214,7 @@ object Effects {
     val DROP_ITEM: Effect = EffectDropItem()
     val DROP_ITEM_FOR_PLAYER: Effect = EffectDropItemForPlayer()
     val AOE: Effect = EffectAOE()
+    val SET_VICTIM_VELOCITY: Effect = EffectSetVictimVelocity()
 
     init {
         addNewEffectArgument(EffectArgumentChance)
@@ -220,6 +223,7 @@ object Effects {
         addNewEffectArgument(EffectArgumentEvery)
         addNewEffectArgument(EffectArgumentPointCost)
         addNewEffectArgument(EffectArgumentRequire)
+        addNewEffectArgument(EffectArgumentPrice)
     }
 
     /**
@@ -354,7 +358,7 @@ object Effects {
             }
 
             it
-        } ?: TransientConfig()
+        } ?: emptyConfig()
 
         val triggers = config.getStrings("triggers").let {
             val triggers = mutableListOf<Trigger>()
