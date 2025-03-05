@@ -1,32 +1,72 @@
 name: Build
+
 on:
   workflow_dispatch:
   release:
     types: [created]
 
 jobs:
-  publish:
+  build-and-publish:
     runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      packages: write
+
     steps:
-      - name: Checkout latest code
-        uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: 21
+          java-version: '21'
+          cache: 'gradle'
 
-      - name: Change wrapper permissions
-        run: chmod +x ./gradlew
+      - name: Set version
+        id: set-version
+        run: |
+          chmod +x ./gradlew
+          VERSION=$(./gradlew properties | grep '^version:' | cut -d' ' -f2)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Build package
-        uses: gradle/gradle-build-action@v2
-        with:
-          arguments: assemble
+      - name: Build and Test
+        run: |
+          ./gradlew build --info --stacktrace  # Changed from assemble to build (includes tests)
+
+      - name: Prepare artifacts directory
+        run: |
+          mkdir -p artifacts
+          cp -r build/libs/*.jar artifacts/
+          echo "Artifact directory prepared with version ${{ env.VERSION }}"
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: build-artifacts
-          path: build/libs/**
+          name: build-artifacts-${{ env.VERSION }}
+          path: |
+            artifacts/*.jar
+            build/libs/*.jar  # Include both original and copied artifacts
+          compression-level: 6
+          retention-days: 30
+          if-no-files-found: error  # Fail if no artifacts are found
+
+      - name: Report artifact size
+        run: |
+          echo "Artifact sizes:"
+          du -sh artifacts/* build/libs/*
+        if: always()
